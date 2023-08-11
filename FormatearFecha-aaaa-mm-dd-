@@ -1,10 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import ttk
 from openpyxl import load_workbook
 from openpyxl.styles import NamedStyle
 from datetime import datetime
-from tqdm import tqdm
-
 
 # Función para cambiar el formato de las fechas en una hoja
 def cambiar_formato_fechas(hoja, progress_bar):
@@ -19,38 +18,38 @@ def cambiar_formato_fechas(hoja, progress_bar):
                 nueva_fila.append(celda)
         hoja.append(nueva_fila)
         filas_a_borrar.append(fila_idx)
-        progress_bar.update(1 / total_filas * 100)  # Actualizar la barra de progreso
+        
+        progreso_actual = (fila_idx - 1) / total_filas * 100  # Restamos 1 para excluir la fila de encabezados
+        progress_bar['value'] = progreso_actual
+        root.update_idletasks()  # Actualizar la interfaz gráfica
 
     for idx in reversed(filas_a_borrar):
         hoja.delete_rows(idx)
 
-
 # Función para seleccionar y procesar el archivo Excel
 def procesar_archivo():
     archivo = filedialog.askopenfilename(filetypes=[("Archivos Excel", "*.xlsx")])
-
+    
     if archivo:
         libro = load_workbook(archivo)
         estilo_fecha = NamedStyle(name='estilo_fecha', number_format='YYYY-MM-DD')
-
+        
         for hoja in libro:
-            total_filas = hoja.max_row - 1  # Restamos 1 para excluir la fila de encabezados
-            progress_bar = tqdm(total=100, desc=f'Procesando hoja "{hoja.title}"', position=0, leave=True)
+            progress_bar['value'] = 0
             cambiar_formato_fechas(hoja, progress_bar)
             for fila in hoja.iter_rows(min_row=2):
                 for celda in fila:
                     if isinstance(celda.value, datetime):
                         celda.style = estilo_fecha
-            progress_bar.close()
-
+        
         nuevo_archivo = archivo.replace('.xlsx', '_nuevo.xlsx')
         libro.save(nuevo_archivo)
         libro.close()
-
+        
         mensaje.config(text=f"Proceso completado. Nuevo archivo: {nuevo_archivo}")
     else:
         mensaje.config(text="Ningún archivo seleccionado.")
-
+    progress_bar['value'] = 0
 
 # Configuración de la interfaz gráfica
 root = tk.Tk()
@@ -58,6 +57,9 @@ root.title("Cambiar Formato de Fechas")
 
 btn_seleccionar = tk.Button(root, text="Seleccionar Archivo", command=procesar_archivo)
 btn_seleccionar.pack(pady=20)
+
+progress_bar = ttk.Progressbar(root, orient='horizontal', length=300, mode='determinate')
+progress_bar.pack(pady=10)
 
 mensaje = tk.Label(root, text="")
 mensaje.pack()
